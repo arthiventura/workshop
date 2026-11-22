@@ -80,6 +80,12 @@ Breakpoints: `md` 800px (folhas viram diálogo, barra fixa aparece), `lg` 1100px
 - **Editar/excluir cartão:** toque no cartão da frente. Excluir mantém os gastos como "Dinheiro / Pix".
 - **Fase atual = só front-end.** IA em modo mock no navegador, dados no localStorage. Nada de backend até pedirem.
 
+## Git / GitHub
+
+- Repositório **público**: https://github.com/arthiventura/workshop (branch `main`). A raiz do Git é a pasta do workshop (inclui `CLAUDE.md`), não `eskgo/`. Na Vercel, o diretório do app é `eskgo`.
+- Commits como "Ventura", com o e-mail noreply do GitHub (config só deste repositório).
+- GitHub CLI instalado em `~/.local/bin/gh` (fora do PATH; chamar pelo caminho completo). Login feito na conta arthiventura.
+
 ## Segurança / ambiente
 
 - `.env` local (não versionado, permissão 600) e `.env.example` documentado.
@@ -91,7 +97,7 @@ Breakpoints: `md` 800px (folhas viram diálogo, barra fixa aparece), `lg` 1100px
 1. Camada de dados salva o estado inteiro de uma vez; Supabase pede operações por entidade, assíncronas.
 2. Tipos x esquema: `dueInDays` × `due_day`; meta com rótulo "Dez 2027" × `due_month`; `previousMonthTotal` não existe no banco; ids curtos × uuid.
 3. Login só valida o formato: falta sessão real e tela de cadastro.
-4. Faltam `supabase/seed.sql` e o repositório Git (a pessoa pediu para esperar).
+4. Falta `supabase/seed.sql`.
 5. Lint: 1 erro (espaço invisível numa regex em `src/lib/format.ts`) + avisos de react-refresh.
 
 Próximo passo combinado: refinar conforme o que o Lucas passar na aula.
