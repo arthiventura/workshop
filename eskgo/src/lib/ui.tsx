@@ -10,7 +10,7 @@ export type Sheet =
   | { type: 'add'; txId?: string }
   | { type: 'conta' }
   | { type: 'card'; cardId?: string }
-  | { type: 'goal-new' }
+  | { type: 'goal'; goalId?: string }
   | { type: 'goal-save'; goalId: string }
   | { type: 'budget'; category: Category | 'total' }
   | null

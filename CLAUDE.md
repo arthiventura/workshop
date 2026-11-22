@@ -4,7 +4,7 @@ App de finanças pessoais (mobile-first, com versão desktop) feito no workshop 
 Assinatura: "Seu assistente financeiro para grandes conquistas." Idioma do produto e das conversas: **PT-BR**.
 
 - **Código:** `eskgo/` (rodar tudo de dentro dessa pasta)
-- **Design (canvas):** https://claude.ai/artifact/112xfta7uRLdZg8SmkFoWK — 10 telas (mobile + desktop). Ao mudar uma tela no app, atualizar o canvas também.
+- **Design (canvas):** https://claude.ai/artifact/112xfta7uRLdZg8SmkFoWK — 12 telas (mobile + desktop). Ao mudar uma tela no app, atualizar o canvas também.
 - **Usuária(o) de exemplo:** Ventura (`ventura@eskgo.app`)
 
 ## Rodar
@@ -39,13 +39,17 @@ src/
   config/env.ts        leitura tipada das variáveis VITE_*
   lib/                 store (reducer + ViewModel do mês), tipos, seed, formatação, navegação/folhas/toast (ui.tsx)
   services/ai/         contrato da IA · mock.ts (em uso) · http.ts (→ /api, futuro)
-  services/storage.ts  persistência (localStorage, chave eskgo:state:v3)
-  services/supabase.ts client do Supabase (comentado, ainda não ligado)
+  services/storage.ts  persistência offline (localStorage, chave eskgo:state:v3)
+  services/supabase.ts client do Supabase (liga sozinho com VITE_SUPABASE_* no .env)
+  services/remote.ts   leitura do banco (loadSnapshot) e gravação por entidade/RPC (persist)
   components/          ui.tsx (primitivos), Icon, TopBar (barra fixa do desktop), TransactionRow
   screens/             Home, Cartoes, Metas, Fatura, Assistente, Login
   sheets/              AddExpenseSheet, OtherSheets (Conta, CardSheet, metas, teto)
 api/                   Vercel Functions (vazia de propósito)
-supabase/migrations/   esquema com RLS (rascunho, nunca executado)
+supabase/migrations/   6 migrations JÁ APLICADAS no Supabase (schema, RLS, funções, storage, seed demo, add_goal)
+supabase/seed.sql      dados mock da demo (idempotente)
+prisma/schema.prisma   só documentação (fonte da verdade = migrations SQL)
+docs/banco/            README do banco (ER, policies, RPCs, mapeamento app ↔ colunas) + checklist.md
 docs/integracao/       passo a passo + código de exemplo: openai.md, supabase.md
 ```
 
@@ -78,7 +82,12 @@ Breakpoints: `md` 800px (folhas viram diálogo, barra fixa aparece), `lg` 1100px
 - Cartão de saldo: título **"Saldo"**, sem a linha "Seu saldo".
 - **Desktop:** barra fixa no topo (`TopBar`) com logo à esquerda (volta à Home) e perfil à direita; no celular não aparece.
 - **Editar/excluir cartão:** toque no cartão da frente. Excluir mantém os gastos como "Dinheiro / Pix".
-- **Fase atual = só front-end.** IA em modo mock no navegador, dados no localStorage. Nada de backend até pedirem.
+- **Dinheiro nas metas sai do saldo:** criar meta com "Já guardado" tira o valor do saldo (RPC `add_goal`), igual a "Guardar"; excluir devolve tudo.
+- **Editar/excluir meta:** link "Editar meta" no card em destaque e na folha "Guardar em…". A edição muda nome, alvo e mês; o valor guardado só muda por "Guardar". Excluir devolve o valor guardado ao saldo e tem "Desfazer".
+- **Fase atual:** app **ligado ao Supabase** (projeto `ajkipsvysdleovhlhtbu`, ESKGO-PROJECT, sa-east-1): login e cadastro reais, dados no banco, fatura no storage. IA ainda mock. Sem `VITE_SUPABASE_*` no `.env`, o app cai no modo offline (localStorage), útil para Storybook.
+- **Como o app grava:** a ação aparece na tela na hora (reducer), vai para uma fila que grava no banco uma por vez, e depois o app relê tudo do banco. Erro = aviso + dados do banco de volta. Saldo e fatura só mudam por RPC.
+- **Banco:** 6 tabelas (`profiles`, `cards`, `transactions`, `goals`, `budgets`, `budget_categories`), RLS só-dono, `anon` sem acesso, bucket privado `faturas` (pasta `{uid}/`). Operações que mexem no saldo passam por RPCs atômicas (`add/update/delete_transaction`, `import_invoice`, `add_goal`, `save_to_goal`, `delete_goal`, `restore_goal`, `monthly_spending`).
+- **Dados mock** ficam no Supabase na conta demo `ventura@eskgo.app` (sem senha ainda) até a pessoa pedir para apagar. Agente do banco: `.claude/agents/supabase-architect.md`.
 
 ## Git / GitHub
 
@@ -92,13 +101,15 @@ Breakpoints: `md` 800px (folhas viram diálogo, barra fixa aparece), `lg` 1100px
 - `VITE_*` = público no navegador. Segredos (`OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) só no servidor.
 - O `vite.config.ts` **bloqueia o build** se um segredo aparecer com prefixo `VITE_`.
 
-## Pendências (preparação para o Supabase)
+## Pendências
 
-1. Camada de dados salva o estado inteiro de uma vez; Supabase pede operações por entidade, assíncronas.
-2. Tipos x esquema: `dueInDays` × `due_day`; meta com rótulo "Dez 2027" × `due_month`; `previousMonthTotal` não existe no banco; ids curtos × uuid.
-3. Login só valida o formato: falta sessão real e tela de cadastro.
-4. Falta `supabase/seed.sql`.
-5. Lint: 1 erro (espaço invisível numa regex em `src/lib/format.ts`) + avisos de react-refresh.
+Checklist completo: `eskgo/docs/banco/checklist.md`.
+
+1. Definir a senha da conta demo no painel do Supabase (o CRUD logado já foi testado com uma conta real em 22/11).
+2. Variáveis `VITE_SUPABASE_*` na Vercel + URL da Vercel em Auth → URL Configuration.
+3. Antes de cobrar o Plus: `revoke update (plus)` em `profiles` e checar o Plus no servidor.
+4. Ligar "Leaked Password Protection" no Auth (único aviso dos advisors).
+5. Lint: só avisos de react-refresh (o erro da regex em `format.ts` foi corrigido).
 
 Próximo passo combinado: refinar conforme o que o Lucas passar na aula.
 

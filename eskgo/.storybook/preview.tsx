@@ -6,7 +6,7 @@ import { UIProvider } from '../src/lib/ui'
 const preview: Preview = {
   decorators: [
     (Story) => (
-      <StoreProvider>
+      <StoreProvider offline>
         <UIProvider>
           <Story />
         </UIProvider>

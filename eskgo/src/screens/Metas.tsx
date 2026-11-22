@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../components/Icon'
-import { Button, IconButton, Kicker, Progress, Ring, Screen, ScreenHeader, cx } from '../components/ui'
+import { Button, Empty, IconButton, Kicker, Progress, Ring, Screen, ScreenHeader, cx } from '../components/ui'
 import { moneyShort, pct } from '../lib/format'
 import { useMonth, useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
@@ -25,7 +25,7 @@ export function Metas() {
 
   return (
     <Screen>
-      <ScreenHeader title="Metas" action={<IconButton icon="plus" label="Nova meta" tone="gold" onClick={() => openSheet({ type: 'goal-new' })} />} />
+      <ScreenHeader title="Metas" action={<IconButton icon="plus" label="Nova meta" tone="gold" onClick={() => openSheet({ type: 'goal' })} />} />
 
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-5">
         {/* Em cima — este mês */}
@@ -69,6 +69,18 @@ export function Metas() {
         {/* Embaixo — guardando */}
         <div className="flex flex-col gap-3.5">
           <Kicker className="px-1 pt-2 lg:hidden">Guardando</Kicker>
+          {!featured && (
+            <Empty
+              icon="target"
+              title="Nenhuma meta"
+              body="Dê um nome, um valor e, se quiser, um mês. O Eskgo mostra quanto falta a cada valor guardado."
+              action={
+                <Button tone="outline" className="mt-1 h-11 px-5" onClick={() => openSheet({ type: 'goal' })}>
+                  Criar meta
+                </Button>
+              }
+            />
+          )}
           {featured && (
             <article aria-label={featured.name} className="flex flex-col gap-[18px] rounded-card border border-esk-border bg-esk-elevated p-[22px] lg:flex-row lg:flex-wrap lg:items-center lg:gap-6 lg:p-7">
               <div className="flex items-center gap-4 lg:contents">
@@ -96,13 +108,24 @@ export function Metas() {
                 <Button onClick={save500} className="whitespace-nowrap">
                   Guardar R$ 500
                 </Button>
-                <button
-                  type="button"
-                  onClick={() => openSheet({ type: 'goal-save', goalId: featured.id })}
-                  className="h-11 text-sm font-bold text-esk-text-2 transition hover:text-esk-text"
-                >
-                  Guardar outro valor
-                </button>
+                <div className="grid grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => openSheet({ type: 'goal-save', goalId: featured.id })}
+                    className="h-11 text-sm font-bold text-esk-text-2 transition hover:text-esk-text"
+                  >
+                    Guardar outro valor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openSheet({ type: 'goal', goalId: featured.id })}
+                    aria-label={`Editar meta ${featured.name}`}
+                    className="flex h-11 items-center justify-center gap-1.5 text-sm font-bold text-esk-text-2 transition hover:text-esk-text"
+                  >
+                    <Icon name="edit" size={15} strokeWidth={2} />
+                    Editar meta
+                  </button>
+                </div>
               </div>
             </article>
           )}

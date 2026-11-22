@@ -3,7 +3,7 @@
  *
  * Hoje: localStorage (um aparelho, sem login real).
  * Depois: Supabase — trocar a implementação aqui sem mexer nas telas.
- * Esquema das tabelas: supabase/migrations/0001_schema_inicial.sql
+ * Esquema das tabelas: supabase/migrations/ (5 migrations já aplicadas; ver docs/banco/README.md)
  */
 import type { AppState } from '../lib/types'
 

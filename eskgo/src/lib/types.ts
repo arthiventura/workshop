@@ -35,6 +35,8 @@ export interface Goal {
   saved: number
   /** "Dez 2027" */
   date?: string
+  /** ordem na tela (vem do banco; no modo offline é a ordem do array) */
+  position?: number
 }
 
 export interface Budget {

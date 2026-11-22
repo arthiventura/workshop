@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { Avatar, Button, Field, SheetFrame, Switch, cx, inputCls } from '../components/ui'
 import { Icon } from '../components/Icon'
-import { money, moneyShort, parseMoney, pct, toInput } from '../lib/format'
+import { labelToMonth, money, moneyShort, monthToLabel, parseMoney, pct, toInput } from '../lib/format'
 import { useMonth, useStore } from '../lib/store'
 import { useUI } from '../lib/ui'
 import type { CardColor, Category } from '../lib/types'
 
 /* ───────── Folha · Conta ───────── */
 export function AccountSheet() {
-  const { state, dispatch } = useStore()
+  const { state, dispatch, mode } = useStore()
   const { closeSheet, toast, go } = useUI()
   const [confirm, setConfirm] = useState(false)
   return (
@@ -33,6 +33,7 @@ export function AccountSheet() {
             label="Eskgo Plus"
           />
         </Row>
+        {mode === 'local' && (
         <button
           type="button"
           onClick={() => {
@@ -45,12 +46,15 @@ export function AccountSheet() {
         >
           Restaurar dados de exemplo
         </button>
+        )}
       </div>
 
       {confirm ? (
         <div role="alertdialog" aria-label="Sair" className="flex flex-col gap-2.5 rounded-tile border border-esk-track p-4">
           <span className="text-[15px] font-bold">Deseja sair?</span>
-          <span className="text-[13px] text-esk-text-2">Seus lançamentos continuam salvos neste aparelho.</span>
+          <span className="text-[13px] text-esk-text-2">
+            {mode === 'remote' ? 'Seus lançamentos continuam salvos na sua conta.' : 'Seus lançamentos continuam salvos neste aparelho.'}
+          </span>
           <div className="mt-1 grid grid-cols-2 gap-2">
             <Button tone="ghost" className="h-12" onClick={() => setConfirm(false)}>
               Cancelar
@@ -214,15 +218,19 @@ export function CardSheet({ cardId }: { cardId?: string }) {
   )
 }
 
-/* ───────── Folha · Nova meta ───────── */
-export function NewGoalSheet() {
-  const { dispatch } = useStore()
+/* ───────── Folha · Nova / editar meta ───────── */
+export function GoalSheet({ goalId }: { goalId?: string }) {
+  const { state, dispatch } = useStore()
   const { closeSheet, toast } = useUI()
-  const [name, setName] = useState('')
-  const [target, setTarget] = useState('')
+  const existing = goalId ? state.goals.find((g) => g.id === goalId) : undefined
+  const asInput = (v: number) => toInput(v).replace(/,00$/, '')
+
+  const [name, setName] = useState(existing?.name ?? '')
+  const [target, setTarget] = useState(existing ? asInput(existing.target) : '')
   const [saved, setSaved] = useState('')
-  const [date, setDate] = useState('')
+  const [date, setDate] = useState(labelToMonth(existing?.date))
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -232,18 +240,29 @@ export function NewGoalSheet() {
     if (!t || t <= 0) errs.target = 'Quanto você quer juntar?'
     setErrors(errs)
     if (Object.keys(errs).length) return
-    let label: string | undefined
-    if (date) {
-      const [y, m] = date.split('-').map(Number)
-      label = `${['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][m - 1]} ${y}`
+    const data = { name: name.trim(), target: t!, date: date ? monthToLabel(date) : undefined }
+    if (existing) {
+      dispatch({ type: 'goal/update', goal: { ...existing, ...data } })
+      toast(`Meta ${data.name} atualizada`, { tone: 'success' })
+    } else {
+      dispatch({ type: 'goal/add', goal: { ...data, saved: parseMoney(saved) ?? 0 } })
+      toast(`Meta ${data.name} criada`, { tone: 'success' })
     }
-    dispatch({ type: 'goal/add', goal: { name: name.trim(), target: t!, saved: parseMoney(saved) ?? 0, date: label } })
-    toast(`Meta ${name.trim()} criada`, { tone: 'success' })
     closeSheet()
   }
 
+  const remove = () => {
+    if (!existing) return
+    const index = state.goals.findIndex((g) => g.id === existing.id)
+    dispatch({ type: 'goal/delete', id: existing.id })
+    closeSheet()
+    toast(`Meta ${existing.name} excluída`, {
+      action: { label: 'Desfazer', run: () => dispatch({ type: 'goal/restore', goal: existing, index }) },
+    })
+  }
+
   return (
-    <SheetFrame title="Nova meta" onClose={closeSheet}>
+    <SheetFrame title={existing ? 'Editar meta' : 'Nova meta'} onClose={closeSheet}>
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         <Field label="Nome" error={errors.name}>
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Reforma da cozinha" maxLength={32} />
@@ -252,14 +271,55 @@ export function NewGoalSheet() {
           <Field label="Valor alvo (R$)" error={errors.target}>
             <input className={inputCls} inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="10.000" />
           </Field>
-          <Field label="Já guardado (R$)">
-            <input className={inputCls} inputMode="decimal" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0" />
-          </Field>
+          {existing ? (
+            <div className="flex flex-col gap-2">
+              <span className="kicker text-esk-muted">Já guardado</span>
+              <span className="flex h-[52px] items-center px-1 text-base font-bold">{moneyShort(existing.saved)}</span>
+            </div>
+          ) : (
+            <Field label="Já guardado (R$)">
+              <input className={inputCls} inputMode="decimal" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0" />
+            </Field>
+          )}
         </div>
+        {!existing && (parseMoney(saved) ?? 0) > 0 && (
+          <p className="m-0 -mt-1 text-[13px] text-esk-text-2">{moneyShort(parseMoney(saved) ?? 0)} saem do saldo e vão para a meta.</p>
+        )}
         <Field label="Quando (opcional)">
           <input type="month" className={cx(inputCls, '[color-scheme:dark]')} value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
-        <Button type="submit">Criar meta</Button>
+        {existing && confirmDelete ? (
+          <div role="alertdialog" aria-label="Excluir meta" className="flex flex-col gap-2.5 rounded-tile border border-esk-track p-4">
+            <span className="text-[15px] font-bold">Excluir a meta {existing.name}?</span>
+            <span className="text-[13px] text-esk-text-2">
+              {existing.saved > 0 ? `Os ${moneyShort(existing.saved)} guardados voltam para o saldo.` : 'Nada foi guardado nesta meta ainda.'}
+            </span>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <Button tone="ghost" className="h-12" onClick={() => setConfirmDelete(false)}>
+                Cancelar
+              </Button>
+              <Button tone="light" className="h-12" onClick={remove}>
+                Excluir
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className={existing ? 'grid grid-cols-[auto_1fr] gap-2' : 'flex'}>
+            {existing && (
+              <button
+                type="button"
+                aria-label="Excluir meta"
+                onClick={() => setConfirmDelete(true)}
+                className="grid size-14 place-items-center rounded-tile bg-esk-icon text-esk-text transition hover:bg-esk-track"
+              >
+                <Icon name="trash" />
+              </button>
+            )}
+            <Button type="submit" className="w-full">
+              {existing ? 'Salvar alterações' : 'Criar meta'}
+            </Button>
+          </div>
+        )}
       </form>
     </SheetFrame>
   )
@@ -268,7 +328,7 @@ export function NewGoalSheet() {
 /* ───────── Folha · Guardar valor ───────── */
 export function SaveGoalSheet({ goalId }: { goalId: string }) {
   const { state, dispatch } = useStore()
-  const { closeSheet, toast } = useUI()
+  const { closeSheet, toast, openSheet } = useUI()
   const goal = state.goals.find((g) => g.id === goalId)
   const [value, setValue] = useState('500')
   const [error, setError] = useState<string>()
@@ -289,9 +349,19 @@ export function SaveGoalSheet({ goalId }: { goalId: string }) {
 
   return (
     <SheetFrame title={`Guardar em ${goal.name}`} onClose={closeSheet}>
-      <p className="m-0 -mt-2 text-sm text-esk-text-2">
-        {moneyShort(goal.saved)} de {moneyShort(goal.target)} · {p}%
-      </p>
+      <div className="-mt-2 flex items-center justify-between gap-3">
+        <p className="m-0 text-sm text-esk-text-2">
+          {moneyShort(goal.saved)} de {moneyShort(goal.target)} · {p}%
+        </p>
+        <button
+          type="button"
+          onClick={() => openSheet({ type: 'goal', goalId: goal.id })}
+          className="flex shrink-0 items-center gap-1.5 text-sm font-bold text-esk-gold transition hover:text-esk-champagne"
+        >
+          <Icon name="edit" size={15} strokeWidth={2} />
+          Editar meta
+        </button>
+      </div>
       <form onSubmit={submit} noValidate className="flex flex-col gap-4">
         <div className="flex gap-2">
           {[100, 250, 500, 1000].map((v) => (

@@ -2,7 +2,7 @@ const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' 
 const int = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 })
 
 /** R$ 1.284,50 */
-export const money = (v: number) => brl.format(v).replace(/ /g, ' ')
+export const money = (v: number) => brl.format(v).replace(/\u00a0/g, ' ')
 
 /** R$ 1.284 (sem centavos quando inteiro) */
 export const moneyShort = (v: number) => (Math.round(v * 100) % 100 === 0 ? `R$ ${int.format(Math.round(v))}` : money(v))
@@ -61,4 +61,38 @@ export function fromDateInput(value: string, keepTimeFrom?: string) {
 
 export const pct = (part: number, whole: number) => (whole <= 0 ? 0 : Math.round((part / whole) * 100))
 
-export const uid = () => Math.random().toString(36).slice(2, 10)
+/** Id novo. uuid de verdade, porque no Supabase todo id é uuid (e o app cria o id antes de gravar). */
+export const uid = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2, 10)
+
+/* ───────── Mês da meta: "Dez 2027" (app) ↔ "2027-12" (input) ↔ "2027-12-01" (banco) ───────── */
+const MONTHS_CAP = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+
+/** "2027-12" (ou "2027-12-01") → "Dez 2027" */
+export const monthToLabel = (value: string) => {
+  const [y, m] = value.split('-').map(Number)
+  return MONTHS_CAP[m - 1] ? `${MONTHS_CAP[m - 1]} ${y}` : undefined
+}
+
+/** "Dez 2027" → "2027-12" (valor do <input type="month">) */
+export const labelToMonth = (label?: string) => {
+  const [mon, y] = label?.split(' ') ?? []
+  const i = MONTHS_CAP.indexOf(mon)
+  return i >= 0 && /^\d{4}$/.test(y ?? '') ? `${y}-${String(i + 1).padStart(2, '0')}` : ''
+}
+
+/* ───────── Vencimento do cartão: dia do mês (banco) ↔ "vence em X dias" (app) ───────── */
+
+/** Dias até o próximo vencimento, a partir do dia do mês (1–31). Dia 31 vira o último dia em meses curtos. */
+export function dueInDays(dueDay: number, today = new Date()): number {
+  const y = today.getFullYear()
+  const m = today.getMonth()
+  const d = today.getDate()
+  const dayIn = (yy: number, mm: number) => Math.min(dueDay, new Date(yy, mm + 1, 0).getDate())
+  let due = new Date(y, m, dayIn(y, m))
+  if (d > due.getDate()) due = new Date(y, m + 1, dayIn(y, m + 1))
+  return Math.round((due.getTime() - new Date(y, m, d).getTime()) / 86_400_000)
+}
+
+/** "Vence em X dias" → dia do mês do vencimento */
+export const dueDayFromDays = (days: number, today = new Date()) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + days).getDate()

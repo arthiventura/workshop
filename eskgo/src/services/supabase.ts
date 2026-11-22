@@ -1,19 +1,20 @@
 /**
- * Ponto de entrada do Supabase (ainda NÃO conectado).
+ * Client do Supabase (navegador).
  *
- * Para integrar:
- *   1. npm install @supabase/supabase-js
- *   2. Preencher VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env (e nas env vars da Vercel)
- *   3. Rodar supabase/migrations/0001_schema_inicial.sql no projeto Supabase
- *   4. Descomentar o client abaixo e trocar `storage` em src/services/storage.ts
+ * Liga sozinho quando VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY estão no .env (e nas env vars da Vercel).
+ * Sem elas, o app roda no modo offline (localStorage), útil para o Storybook e para demo sem internet.
  *
- * A anon key é pública por design; a segurança vem das políticas RLS do banco.
- * A service role key NUNCA entra no front.
+ * A anon/publishable key é pública por design; a segurança vem das políticas RLS do banco
+ * (supabase/migrations/, ver docs/banco/README.md). A service role key NUNCA entra no front.
  */
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { env, isSupabaseConfigured } from '../config/env'
 
-// import { createClient } from '@supabase/supabase-js'
-// export const supabase = isSupabaseConfigured ? createClient(env.supabaseUrl, env.supabaseAnonKey) : null
+export const supabase: SupabaseClient | null = isSupabaseConfigured
+  ? createClient(env.supabaseUrl, env.supabaseAnonKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    })
+  : null
 
 export const supabaseStatus = {
   configured: isSupabaseConfigured,

@@ -1,0 +1,158 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Eskgo · schema Prisma — SOMENTE DOCUMENTAÇÃO
+//
+// A fonte da verdade são as migrations SQL do Supabase em supabase/migrations/.
+// RLS, policies, grants, triggers (updated_at, on_auth_user_created), RPCs e
+// storage existem só no SQL; o Prisma não os representa.
+//
+// O Prisma NÃO está instalado, não é dependência do projeto e NÃO é usado para
+// migrar. Não rode `prisma migrate` / `prisma db push` neste banco.
+// Este arquivo serve para ler o modelo de dados de relance (tipos, relações e
+// nomes em snake_case). Documentação completa: docs/banco/README.md
+//
+// Dinheiro: no Prisma o tipo nativo do Postgres numeric(12,2) se escreve
+// @db.Decimal(12, 2) (decimal e numeric são o mesmo tipo no Postgres).
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // só ilustrativo; nenhuma variável é necessária hoje
+}
+
+/// Categorias de gasto. No Postgres: enum public.expense_category.
+enum ExpenseCategory {
+  Moradia
+  Alimentacao @map("Alimentação")
+  Transporte
+  Lazer
+  Outros
+
+  @@map("expense_category")
+}
+
+/// Visual do cartão. No Postgres: enum public.card_color.
+enum CardColor {
+  gradient
+  champagne
+  offwhite
+
+  @@map("card_color")
+}
+
+/// Origem do gasto: digitado ou importado da fatura. No Postgres: enum public.transaction_source.
+enum TransactionSource {
+  manual
+  fatura
+
+  @@map("transaction_source")
+}
+
+/// 1:1 com auth.users (id = auth.users.id, ON DELETE CASCADE no SQL).
+/// Criado pelo trigger on_auth_user_created. Cliente só lê e altera (sem insert/delete).
+model Profile {
+  id          String   @id @db.Uuid
+  name        String   @default("")
+  balance     Decimal  @default(0) @db.Decimal(12, 2)
+  hideBalance Boolean  @default(false) @map("hide_balance")
+  plus        Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  cards            Card[]
+  transactions     Transaction[]
+  goals            Goal[]
+  budget           Budget?
+  budgetCategories BudgetCategory[]
+
+  @@map("profiles")
+}
+
+model Card {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  nickname    String
+  last4       String // check: ^[0-9]{4}$
+  color       CardColor @default(champagne)
+  creditLimit Decimal   @map("credit_limit") @db.Decimal(12, 2)
+  invoice     Decimal   @default(0) @db.Decimal(12, 2)
+  dueDay      Int       @map("due_day") @db.SmallInt // 1–31
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user         Profile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([id, userId], map: "cards_id_user_id_key")
+  @@index([userId, createdAt(sort: Desc)], map: "cards_user_id_created_at_idx")
+  @@map("cards")
+}
+
+model Transaction {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String            @map("user_id") @db.Uuid
+  cardId     String?           @map("card_id") @db.Uuid // null = Dinheiro / Pix
+  name       String
+  category   ExpenseCategory
+  amount     Decimal           @db.Decimal(12, 2) // > 0
+  occurredAt DateTime          @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  source     TransactionSource @default(manual)
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // FK composta (card_id, user_id) → cards(id, user_id): o cartão tem de ser da mesma pessoa.
+  // NO BANCO: ON DELETE SET NULL (card_id) — excluir o cartão zera só card_id e o gasto vira "Dinheiro / Pix".
+  // O Prisma não aceita SetNull numa FK que inclui um campo obrigatório (user_id), por isso aqui fica NoAction.
+  card Card? @relation(fields: [cardId, userId], references: [id, userId], onDelete: NoAction, map: "transactions_card_fkey")
+
+  @@index([userId, occurredAt(sort: Desc)], map: "transactions_user_id_occurred_at_idx")
+  @@index([cardId, userId], map: "transactions_card_id_user_id_idx")
+  @@map("transactions")
+}
+
+model Goal {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  name      String
+  target    Decimal   @db.Decimal(12, 2) // > 0
+  saved     Decimal   @default(0) @db.Decimal(12, 2) // >= 0
+  dueMonth  DateTime? @map("due_month") @db.Date // 1º dia do mês ("Dez 2027" = 2027-12-01)
+  position  Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, position], map: "goals_user_id_position_idx")
+  @@map("goals")
+}
+
+/// Teto total do mês. Criado pelo trigger on_auth_user_created.
+model Budget {
+  userId    String   @id @map("user_id") @db.Uuid
+  total     Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("budgets")
+}
+
+/// Teto por categoria. Categoria sem linha = teto 0.
+model BudgetCategory {
+  userId    String          @map("user_id") @db.Uuid
+  category  ExpenseCategory
+  amount    Decimal         @default(0) @db.Decimal(12, 2)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, category])
+  @@map("budget_categories")
+}

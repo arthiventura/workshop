@@ -144,6 +144,7 @@ function Found({ file, result, onRestart }: { file: File; result: InvoiceResult;
     dispatch({
       type: 'tx/import',
       cardId,
+      file,
       txs: chosen.map((p) => ({
         name: p.name,
         category: p.category,
