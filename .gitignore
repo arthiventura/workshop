@@ -1,0 +1,17 @@
+# Raiz do workshop — o app tem o próprio .gitignore em eskgo/
+
+# Segredos (reforço: nunca versionar)
+.env
+.env.*
+!.env.example
+
+# Dependências e build de qualquer subpasta
+node_modules/
+dist/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Claude Code — configurações locais
+.claude/settings.local.json
