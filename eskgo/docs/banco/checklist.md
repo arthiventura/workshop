@@ -123,7 +123,9 @@ Código pronto em 22/11/2026: `src/services/supabase.ts` (client), `src/services
 - [x] Regra das metas: criar com "Já guardado" tira do saldo (RPC `add_goal`, migration `20261122174845`); testado: saldo 0 → −300 ao criar → 0 ao excluir
 - [ ] Testar upload real de fatura (Plus) e o limite de 15 MB pela Storage API
 - [ ] `/api` (IA) conferindo `profiles.plus` no servidor
-- [ ] Variáveis na Vercel: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (e, quando houver `/api`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)
-- [ ] Supabase Auth → URL Configuration: adicionar a URL da Vercel (link de confirmação do cadastro)
+- [x] Deploy na Vercel: https://eskgo-seven.vercel.app (importado do GitHub, pasta `eskgo`); variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` configuradas
+- [x] App publicado conferido (22/11/2026): abre na tela "Entrar" (modo online), sem erros no console; o bundle tem só a URL e a chave pública, nenhuma chave secreta
+- [ ] Supabase Auth → URL Configuration: Site URL = `https://eskgo-seven.vercel.app` e a mesma URL (mais `http://localhost:5173`) em Redirect URLs — sem isso o link de confirmação do cadastro não volta para o app publicado
+- [ ] Quando houver `/api`: `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` na Vercel (só servidor)
 - [ ] `supabase init` + `supabase link` para usar a CLI localmente
 - [ ] Gerar tipos TypeScript do banco (`supabase gen types typescript`)
