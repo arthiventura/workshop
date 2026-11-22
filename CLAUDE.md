@@ -91,7 +91,7 @@ Breakpoints: `md` 800px (folhas viram diálogo, barra fixa aparece), `lg` 1100px
 
 ## Git / GitHub
 
-- **Produção (Vercel):** https://eskgo-seven.vercel.app — deploy automático a cada push na `main`; diretório do app `eskgo`; variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` já configuradas.
+- **Produção (Vercel):** https://eskgo-seven.vercel.app — deploy automático a cada push na `main`; diretório do app `eskgo`; variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` já configuradas; Site URL e Redirect URLs do Supabase Auth apontam para ela (e para `localhost:5173`).
 - Repositório **público**: https://github.com/arthiventura/workshop (branch `main`). A raiz do Git é a pasta do workshop (inclui `CLAUDE.md`), não `eskgo/`. Na Vercel, o diretório do app é `eskgo`.
 - Commits como "Ventura", com o e-mail noreply do GitHub (config só deste repositório).
 - GitHub CLI instalado em `~/.local/bin/gh` (fora do PATH; chamar pelo caminho completo). Login feito na conta arthiventura.
@@ -107,10 +107,9 @@ Breakpoints: `md` 800px (folhas viram diálogo, barra fixa aparece), `lg` 1100px
 Checklist completo: `eskgo/docs/banco/checklist.md`.
 
 1. Definir a senha da conta demo no painel do Supabase (o CRUD logado já foi testado com uma conta real em 22/11).
-2. Supabase Auth → URL Configuration: Site URL e Redirect URLs com `https://eskgo-seven.vercel.app` (e `http://localhost:5173`).
-3. Antes de cobrar o Plus: `revoke update (plus)` em `profiles` e checar o Plus no servidor.
-4. Ligar "Leaked Password Protection" no Auth (único aviso dos advisors).
-5. Lint: só avisos de react-refresh (o erro da regex em `format.ts` foi corrigido).
+2. Antes de cobrar o Plus: `revoke update (plus)` em `profiles` e checar o Plus no servidor.
+3. Ligar "Leaked Password Protection" no Auth (único aviso dos advisors).
+4. Lint: só avisos de react-refresh (o erro da regex em `format.ts` foi corrigido).
 
 Próximo passo combinado: refinar conforme o que o Lucas passar na aula.
 
